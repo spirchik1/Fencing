@@ -1,0 +1,443 @@
+html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Saber Pro Arbiter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+        :root {
+            --glass: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --apple-red: #ff3b30;
+            --apple-yellow: #ffcc00;
+            --apple-green: #34c759;
+            --apple-blue: #007aff;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #000;
+            color: white;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .glass {
+            background: var(--glass);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+        }
+
+        .score-font {
+            font-variant-numeric: tabular-nums;
+            font-size: clamp(70px, 18vw, 110px);
+            font-weight: 700;
+            letter-spacing: -3px;
+        }
+
+        .tab-active { color: var(--apple-blue); }
+        
+        .btn-card {
+            height: 44px;
+            width: 32px;
+            border-radius: 5px;
+            transition: all 0.1s;
+        }
+        .btn-card:active { transform: scale(0.85); }
+
+        .black-card { background: #222; border: 1px solid #444; }
+        .red-card { background: var(--apple-red); box-shadow: 0 0 10px rgba(255,59,48,0.2); }
+        .yellow-card { background: var(--apple-yellow); box-shadow: 0 0 10px rgba(255,204,0,0.2); }
+
+        .video-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+
+        .hidden { display: none; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .timer-low { color: var(--apple-red); animation: pulse 1s infinite; }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <main id="main-content" class="flex-1 overflow-y-auto px-4 pt-2 pb-24">
+        
+        <!-- Вкладка СУДЬЯ -->
+        <section id="judge-section" class="space-y-3">
+            
+            <!-- Полезный раздел: Контроль матча -->
+            <div class="glass p-3 grid grid-cols-3 gap-2 items-center">
+                <div class="flex flex-col items-center">
+                    <span class="text-[9px] text-gray-500 uppercase mb-1">Время</span>
+                    <div id="timer-display" class="text-2xl font-mono font-bold leading-none">03:00</div>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <button onclick="toggleTimer()" id="timer-btn" class="bg-white/10 py-2 rounded-lg text-[10px] font-bold uppercase">Старт</button>
+                    <button onclick="setBreak()" class="bg-blue-500/20 text-blue-400 py-1 rounded-md text-[9px] uppercase">Перерыв 1:00</button>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                    <button onclick="drawPriority()" class="w-full bg-white text-black py-2 rounded-lg text-[10px] font-bold uppercase">Приоритет</button>
+                    <div id="priority-result" class="text-[9px] font-bold text-blue-400 h-3"></div>
+                </div>
+            </div>
+
+            <!-- Имена и Видео-повторы -->
+            <div class="flex gap-3">
+                <div class="w-1/2 flex flex-col gap-1">
+                    <input type="text" id="p1-name" placeholder="Фамилия" oninput="saveCurrentState()" class="glass bg-transparent p-3 text-center text-sm focus:outline-none border-none uppercase font-semibold">
+                    <div class="flex items-center justify-center gap-2">
+                        <span class="text-[9px] text-gray-500">VIDEO</span>
+                        <div id="p1-video" class="video-indicator bg-green-500"></div>
+                        <button onclick="useVideo(1)" class="bg-white/5 px-2 py-0.5 rounded text-[9px]">USE</button>
+                    </div>
+                </div>
+                <div class="w-1/2 flex flex-col gap-1">
+                    <input type="text" id="p2-name" placeholder="Фамилия" oninput="saveCurrentState()" class="glass bg-transparent p-3 text-center text-sm focus:outline-none border-none uppercase font-semibold">
+                    <div class="flex items-center justify-center gap-2">
+                        <span class="text-[9px] text-gray-500">VIDEO</span>
+                        <div id="p2-video" class="video-indicator bg-green-500"></div>
+                        <button onclick="useVideo(2)" class="bg-white/5 px-2 py-0.5 rounded text-[9px]">USE</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Аппарат (Основной счет) -->
+            <div class="glass p-4 flex justify-between items-center relative h-40">
+                <div class="flex flex-col items-center flex-1" onclick="changeScore(1, 1)">
+                    <div id="p1-score" class="score-font">0</div>
+                </div>
+                <div class="flex flex-col gap-4">
+                    <button onclick="resetScore()" class="text-gray-600">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    </button>
+                </div>
+                <div class="flex flex-col items-center flex-1" onclick="changeScore(2, 1)">
+                    <div id="p2-score" class="score-font">0</div>
+                </div>
+            </div>
+
+            <!-- Карточки -->
+            <div class="flex gap-3">
+                <div class="flex-1 glass p-3 flex flex-col items-center gap-2">
+                    <div class="flex gap-2 mb-1">
+                        <div onclick="giveCard(1, 'yellow')" class="btn-card yellow-card flex items-center justify-center"><span id="p1-y-count" class="text-black text-[10px] font-bold"></span></div>
+                        <div onclick="giveCard(1, 'red')" class="btn-card red-card"></div>
+                        <div onclick="giveCard(1, 'black')" class="btn-card black-card"></div>
+                    </div>
+                    <button onclick="changeScore(1, -1)" class="w-full py-2 bg-white/5 rounded-xl text-[10px] uppercase font-bold text-gray-400">Коррекция -</button>
+                </div>
+                <div class="flex-1 glass p-3 flex flex-col items-center gap-2">
+                    <div class="flex gap-2 mb-1">
+                        <div onclick="giveCard(2, 'black')" class="btn-card black-card"></div>
+                        <div onclick="giveCard(2, 'red')" class="btn-card red-card"></div>
+                        <div onclick="giveCard(2, 'yellow')" class="btn-card yellow-card flex items-center justify-center"><span id="p2-y-count" class="text-black text-[10px] font-bold"></span></div>
+                    </div>
+                    <button onclick="changeScore(2, -1)" class="w-full py-2 bg-white/5 rounded-xl text-[10px] uppercase font-bold text-gray-400">Коррекция -</button>
+                </div>
+            </div>
+
+            <button onclick="finishMatch()" class="w-full py-4 glass bg-white text-black font-bold rounded-2xl active:scale-95 transition-all text-sm uppercase tracking-widest">
+                Завершить и Сохранить
+            </button>
+        </section>
+
+        <!-- Вкладка ИСТОРИЯ -->
+        <section id="history-section" class="hidden space-y-4">
+            <div class="flex justify-between items-center px-2">
+                <h2 class="text-xl font-bold">История боёв</h2>
+                <button onclick="clearHistory()" class="text-[10px] text-red-500 font-bold uppercase">Очистить всё</button>
+            </div>
+            <div id="history-list" class="space-y-3"></div>
+        </section>
+    </main>
+
+    <!-- Навигация -->
+    <nav class="fixed bottom-0 left-0 right-0 h-20 border-t border-white/5 bg-black/80 backdrop-blur-2xl flex items-center justify-around px-12 pb-4">
+        <button onclick="showTab('judge')" id="nav-judge" class="flex flex-col items-center gap-1 tab-active">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h.01M7 20h.01M17 20h.01M12 4v12M12 4L8 8M12 4l4 4"/></svg>
+            <span class="text-[9px] font-bold uppercase tracking-tighter">Судья</span>
+        </button>
+        <button onclick="showTab('history')" id="nav-history" class="flex flex-col items-center gap-1 text-gray-500">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+            <span class="text-[9px] font-bold uppercase tracking-tighter">История</span>
+        </button>
+    </nav>
+
+    <div id="modal" class="fixed inset-0 bg-black/95 z-[100] hidden flex items-center justify-center p-8">
+        <div class="glass p-8 w-full max-w-xs text-center border-red-500/30">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4"></h3>
+            <p id="modal-text" class="text-gray-400 text-sm mb-6"></p>
+            <button onclick="closeModal()" class="w-full py-3 bg-white text-black font-bold rounded-xl uppercase text-xs">Закрыть</button>
+        </div>
+    </div>
+
+    <script>
+        // Состояние приложения
+        let state = {
+            p1: { score: 0, yellow: 0, video: true },
+            p2: { score: 0, yellow: 0, video: true }
+        };
+        let historyData = JSON.parse(localStorage.getItem('fencing_history')) || [];
+        let timer = { seconds: 180, interval: null, running: false };
+
+        const haptic = (type) => {
+            if (!navigator.vibrate) return;
+            switch(type) {
+                case 'light': navigator.vibrate(12); break;
+                case 'medium': navigator.vibrate(35); break;
+                case 'heavy': navigator.vibrate([60, 30, 60]); break;
+                case 'error': navigator.vibrate([100, 40, 100, 40, 100]); break;
+            }
+        };
+
+        function saveCurrentState() {
+            const current = {
+                p1: state.p1,
+                p2: state.p2,
+                name1: document.getElementById('p1-name').value,
+                name2: document.getElementById('p2-name').value
+            };
+            localStorage.setItem('fencing_current_state', JSON.stringify(current));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('fencing_current_state');
+            if (saved) {
+                const data = JSON.parse(saved);
+                state.p1 = data.p1;
+                state.p2 = data.p2;
+                document.getElementById('p1-name').value = data.name1;
+                document.getElementById('p2-name').value = data.name2;
+                render();
+            }
+        }
+
+        function changeScore(player, val) {
+            const key = `p${player}`;
+            state[key].score = Math.max(0, state[key].score + val);
+            haptic('light');
+            
+            // Сабельная фишка: Напоминание о перерыве на 8 ударах
+            if (state[key].score === 8 && val > 0) {
+                haptic('heavy');
+                showModal("ПЕРЕРЫВ", "Счет 8. Объявите минутный перерыв.");
+            }
+            
+            saveCurrentState();
+            render();
+        }
+
+        function giveCard(player, type) {
+            const pKey = `p${player}`;
+            const oppKey = player === 1 ? 'p2' : 'p1';
+
+            if (type === 'yellow') {
+                state[pKey].yellow++;
+                haptic('medium');
+                if (state[pKey].yellow >= 2) {
+                    state[pKey].yellow = 0;
+                    giveCard(player, 'red');
+                }
+            } else if (type === 'red') {
+                state[oppKey].score++;
+                haptic('heavy');
+            } else if (type === 'black') {
+                haptic('error');
+                showModal("BLACK CARD", `Спортсмен ${player} дисквалифицирован.`);
+            }
+            saveCurrentState();
+            render();
+        }
+
+        function useVideo(player) {
+            const key = `p${player}`;
+            if (!state[key].video) {
+                haptic('light');
+                return;
+            }
+            haptic('medium');
+            const confirmAction = confirm("Решение изменено? (Если НЕТ - видео сгорает)");
+            if (!confirmAction) {
+                state[key].video = false;
+            }
+            saveCurrentState();
+            render();
+        }
+
+        function render() {
+            document.getElementById('p1-score').innerText = state.p1.score;
+            document.getElementById('p2-score').innerText = state.p2.score;
+            document.getElementById('p1-y-count').innerText = state.p1.yellow || '';
+            document.getElementById('p2-y-count').innerText = state.p2.yellow || '';
+            
+            document.getElementById('p1-video').style.background = state.p1.video ? 'var(--apple-green)' : '#444';
+            document.getElementById('p2-video').style.background = state.p2.video ? 'var(--apple-green)' : '#444';
+        }
+
+        // Таймер
+        function toggleTimer() {
+            haptic('light');
+            if (timer.running) {
+                clearInterval(timer.interval);
+                document.getElementById('timer-btn').innerText = "Старт";
+            } else {
+                timer.interval = setInterval(() => {
+                    timer.seconds--;
+                    if (timer.seconds <= 0) {
+                        clearInterval(timer.interval);
+                        haptic('error');
+                        showModal("ВРЕМЯ", "Бой окончен по времени.");
+                    }
+                    updateTimerUI();
+                }, 1000);
+                document.getElementById('timer-btn').innerText = "Стоп";
+            }
+            timer.running = !timer.running;
+        }
+
+        function setBreak() {
+            haptic('medium');
+            clearInterval(timer.interval);
+            timer.seconds = 60;
+            timer.running = false;
+            document.getElementById('timer-btn').innerText = "Старт";
+            updateTimerUI();
+        }
+
+        function resetTimer() {
+            clearInterval(timer.interval);
+            timer.seconds = 180;
+            timer.running = false;
+            document.getElementById('timer-btn').innerText = "Старт";
+            updateTimerUI();
+        }
+
+        function updateTimerUI() {
+            const m = Math.floor(timer.seconds / 60).toString().padStart(2, '0');
+            const s = (timer.seconds % 60).toString().padStart(2, '0');
+            const el = document.getElementById('timer-display');
+            el.innerText = `${m}:${s}`;
+            el.className = timer.seconds < 15 ? "text-2xl font-mono font-bold leading-none timer-low" : "text-2xl font-mono font-bold leading-none";
+        }
+
+        function drawPriority() {
+            haptic('heavy');
+            const winner = Math.random() > 0.5 ? "ЛЕВО" : "ПРАВО";
+            const res = document.getElementById('priority-result');
+            res.innerText = `ПРИОРИТЕТ: ${winner}`;
+            setTimeout(() => res.innerText = "", 5000);
+        }
+
+        function resetScore() {
+            if (confirm("Сбросить текущий счет?")) {
+                state.p1.score = 0;
+                state.p2.score = 0;
+                render();
+                saveCurrentState();
+            }
+        }
+
+        function finishMatch() {
+            const n1 = document.getElementById('p1-name').value || "БОЕЦ 1";
+            const n2 = document.getElementById('p2-name').value || "БОЕЦ 2";
+            
+            const match = {
+                id: Date.now(),
+                p1: { name: n1, score: state.p1.score },
+                p2: { name: n2, score: state.p2.score },
+                date: new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+
+            historyData.unshift(match);
+            localStorage.setItem('fencing_history', JSON.stringify(historyData));
+            
+            haptic('heavy');
+            // Очистка
+            state = { p1: { score: 0, yellow: 0, video: true }, p2: { score: 0, yellow: 0, video: true } };
+            document.getElementById('p1-name').value = "";
+            document.getElementById('p2-name').value = "";
+            localStorage.removeItem('fencing_current_state');
+            
+            render();
+            resetTimer();
+            showTab('history');
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            if (historyData.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-600 py-10 text-sm">Архив пуст</div>';
+                return;
+            }
+            
+            container.innerHTML = historyData.map(match => `
+                <div class="glass p-4 flex justify-between items-center border-l-4 ${match.p1.score > match.p2.score ? 'border-l-blue-500' : 'border-l-red-500'}">
+                    <div class="flex-1">
+                        <div class="text-[8px] text-gray-500 mb-1 uppercase font-bold">${match.date} | ${match.time}</div>
+                        <div class="flex justify-between items-center pr-4">
+                            <span class="text-xs uppercase ${match.p1.score > match.p2.score ? 'font-black text-white' : 'text-gray-500'}">${match.p1.name}</span>
+                            <span class="text-[10px] text-gray-700">VS</span>
+                            <span class="text-xs uppercase ${match.p2.score > match.p1.score ? 'font-black text-white' : 'text-gray-500'}">${match.p2.name}</span>
+                        </div>
+                    </div>
+                    <div class="text-xl font-black font-mono tracking-tighter bg-white/5 px-4 py-1 rounded-xl">
+                        ${match.p1.score}:${match.p2.score}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function clearHistory() {
+            if (confirm("Удалить все записи из архива?")) {
+                historyData = [];
+                localStorage.removeItem('fencing_history');
+                renderHistory();
+            }
+        }
+
+        function showTab(tab) {
+            haptic('light');
+            document.getElementById('judge-section').classList.toggle('hidden', tab !== 'judge');
+            document.getElementById('history-section').classList.toggle('hidden', tab !== 'history');
+            document.getElementById('nav-judge').classList.toggle('tab-active', tab === 'judge');
+            document.getElementById('nav-history').classList.toggle('tab-active', tab === 'history');
+            if (tab === 'history') renderHistory();
+        }
+
+        function showModal(title, text) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-text').innerText = text;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        window.onload = () => {
+            loadState();
+            render();
+            updateTimerUI();
+        };
+    </script>
+</body>
+</html>
+
+
