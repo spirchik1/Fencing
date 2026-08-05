@@ -2,8 +2,8 @@ import os
 import telebot
 import requests
 
-API_KEY = os.getenv("AI_API_KEY")
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+API_KEY = os.getenv("sk-bwfgep7WmMddnJZFvCI1ZqiCUPf8HOJcgYecfn9rvhm1JIB2")
+BOT_TOKEN = os.getenv("8570030563:AAECUnlfrGMsMdDv9Fi2EZyMMAGKe34TSZQ")
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
